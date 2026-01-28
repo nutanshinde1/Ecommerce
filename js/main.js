@@ -1,9 +1,9 @@
-// Scroll reveal animation
+// ================= Scroll Reveal Animation =================
 const reveals = document.querySelectorAll(".reveal");
 
 const observer = new IntersectionObserver(
-  entries => {
-    entries.forEach(entry => {
+  (entries) => {
+    entries.forEach((entry) => {
       if (entry.isIntersecting) {
         entry.target.classList.add("active");
       }
@@ -12,7 +12,10 @@ const observer = new IntersectionObserver(
   { threshold: 0.15 }
 );
 
-reveals.forEach(el => observer.observe(el));
+reveals.forEach((el) => observer.observe(el));
 
-// Footer year
-document.getElementById("year").textContent = new Date().getFullYear();
+// ================= Footer Year =================
+const yearSpan = document.getElementById("year");
+if (yearSpan) {
+  yearSpan.textContent = new Date().getFullYear();
+}
