@@ -190,28 +190,61 @@ header {
 }
 
 /* ================= EXPERIENCE ================= */
-.experience-section {
-  background: var(--section-bg);
+/* EXPERIENCE CLEAN STYLE */
+
+.experience-section{
+  background:#f3e8ff;
+  padding:80px 20px;
 }
 
-.card {
-  background: var(--card);
-  padding: 28px;
-  border-radius: 20px;
-  margin-bottom: 32px;
+.exp-card{
+  background:#ffffff;
+  padding:28px 32px;
+  border-radius:18px;
+  margin-bottom:30px;
+  max-width:900px;
+  margin-left:auto;
+  margin-right:auto;
+
+  box-shadow:0 10px 25px rgba(0,0,0,0.05);
+  border-left:5px solid var(--primary);
+  transition:0.3s;
 }
 
-.exp-head {
-  display: flex;
-  justify-content: space-between;
-  flex-wrap: wrap;
-  font-size: 14px;
-  color: var(--muted);
+.exp-card:hover{
+  transform:translateY(-4px);
+  box-shadow:0 18px 40px rgba(0,0,0,0.08);
 }
 
-.card h3 {
-  margin-top: 12px;
+.exp-top{
+  display:flex;
+  justify-content:space-between;
+  font-size:14px;
+  color:var(--muted);
+  margin-bottom:10px;
 }
+
+.exp-card h3{
+  font-size:20px;
+  margin:8px 0 4px;
+}
+
+.exp-card h4{
+  color:var(--primary);
+  font-weight:600;
+  margin-bottom:12px;
+}
+
+.exp-card p{
+  color:var(--muted);
+  line-height:1.6;
+}
+
+.exp-skills{
+  margin-top:10px;
+  font-size:14px;
+}
+
 
 /* ================= PROJECTS ================= */
 .projects-grid {
