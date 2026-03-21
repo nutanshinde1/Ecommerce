@@ -1191,26 +1191,243 @@
 </div>
 
 <script>
-  /* ── DATA ── */
-  const products = [
-    { id:1, name:"Silk Wrap Dress", sub:"Women · Dresses", price:4999, oldPrice:7999, rating:5, badge:"sale", emoji:"👗", category:"Women" },
-    { id:2, name:"Cashmere Blazer", sub:"Men · Formals", price:8499, oldPrice:null, rating:5, badge:"new", emoji:"🧥", category:"Men" },
-    { id:3, name:"Leather Tote", sub:"Accessories · Bags", price:5999, oldPrice:null, rating:4, badge:null, emoji:"👜", category:"Accessories" },
-    { id:4, name:"Block Heel Mule", sub:"Women · Footwear", price:3299, oldPrice:4999, rating:5, badge:"sale", emoji:"👠", category:"Footwear" },
-    { id:5, name:"Gold Choker Set", sub:"Jewellery · Necklace", price:2799, oldPrice:null, rating:5, badge:"new", emoji:"📿", category:"Jewellery" },
-    { id:6, name:"Linen Shirt", sub:"Men · Casuals", price:1899, oldPrice:2499, rating:4, badge:"sale", emoji:"👔", category:"Men" },
-    { id:7, name:"Scented Candle Set", sub:"Home · Decor", price:1499, oldPrice:null, rating:5, badge:"new", emoji:"🕯", category:"Home" },
-    { id:8, name:"Structured Handbag", sub:"Women · Bags", price:6999, oldPrice:null, rating:5, badge:null, emoji:"👝", category:"Accessories" },
+  /* ═══════════════════════════════════════════════════════════════
+   *  LUMIÈRE — Frontend JavaScript (API-connected)
+   *  Talks to Node.js backend at /api/*
+   *  Falls back to embedded data when backend is not running
+   * ═══════════════════════════════════════════════════════════════ */
+
+  const API = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+    ? ''            // same-origin when served by Node
+    : '';           // change to 'http://localhost:3000' if frontend is opened as file://
+
+  // Fallback product data (used when API is unreachable)
+  const FALLBACK_PRODUCTS = [
+    { id:'p1', name:'Silk Wrap Dress',    sub:'Women · Dresses',    price:4999, oldPrice:7999, rating:5, badge:'sale', emoji:'👗', category:'Women',       stock:15 },
+    { id:'p2', name:'Cashmere Blazer',    sub:'Men · Formals',      price:8499, oldPrice:null, rating:5, badge:'new',  emoji:'🧥', category:'Men',         stock:8  },
+    { id:'p3', name:'Leather Tote',       sub:'Accessories · Bags', price:5999, oldPrice:null, rating:4, badge:null,  emoji:'👜', category:'Accessories', stock:20 },
+    { id:'p4', name:'Block Heel Mule',    sub:'Women · Footwear',   price:3299, oldPrice:4999, rating:5, badge:'sale', emoji:'👠', category:'Footwear',    stock:10 },
+    { id:'p5', name:'Gold Choker Set',    sub:'Jewellery · Necklace',price:2799,oldPrice:null, rating:5, badge:'new',  emoji:'📿', category:'Jewellery',   stock:25 },
+    { id:'p6', name:'Linen Shirt',        sub:'Men · Casuals',      price:1899, oldPrice:2499, rating:4, badge:'sale', emoji:'👔', category:'Men',         stock:30 },
+    { id:'p7', name:'Scented Candle Set', sub:'Home · Decor',       price:1499, oldPrice:null, rating:5, badge:'new',  emoji:'🕯', category:'Home',        stock:50 },
+    { id:'p8', name:'Structured Handbag', sub:'Women · Bags',       price:6999, oldPrice:null, rating:5, badge:null,  emoji:'👝', category:'Accessories', stock:12 },
   ];
 
-  let cart = JSON.parse(localStorage.getItem('lumiere_cart') || '[]');
-  let wishlist = new Set(JSON.parse(localStorage.getItem('lumiere_wish') || '[]'));
-  let currentFilter = 'all';
+  /* ── API HELPER ─────────────────────────────────────────────── */
+  async function apiFetch(endpoint, options = {}) {
+    const token = localStorage.getItem('lumiere_token');
+    const headers = { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) };
+    try {
+      const res = await fetch(API + endpoint, { ...options, headers: { ...headers, ...options.headers } });
+      return await res.json();
+    } catch {
+      return { success: false, error: 'Backend not reachable' };
+    }
+  }
+
+  /* ── STATE ──────────────────────────────────────────────────── */
+  let allProducts    = [];
+  let cart           = JSON.parse(localStorage.getItem('lumiere_cart') || '[]');
+  let wishlist       = new Set(JSON.parse(localStorage.getItem('lumiere_wish') || '[]'));
+  let currentUser    = JSON.parse(localStorage.getItem('lumiere_user') || 'null');
+  let currentFilter  = 'all';
+  let searchOpen     = false;
 
   const saveCart = () => localStorage.setItem('lumiere_cart', JSON.stringify(cart));
   const saveWish = () => localStorage.setItem('lumiere_wish', JSON.stringify([...wishlist]));
 
-  /* ── RENDER PRODUCTS ── */
+  /* ── AUTH UI ────────────────────────────────────────────────── */
+  function updateAuthUI() {
+    const btn = document.getElementById('authBtn');
+    if (!btn) return;
+    if (currentUser) {
+      btn.textContent = currentUser.name.split(' ')[0];
+      btn.title = 'My Account';
+      btn.onclick = showAccountModal;
+    } else {
+      btn.textContent = '👤';
+      btn.title = 'Login / Register';
+      btn.onclick = showAuthModal;
+    }
+  }
+
+  /* ── AUTH MODAL ─────────────────────────────────────────────── */
+  function showAuthModal(mode = 'login') {
+    removeModal();
+    const modal = document.createElement('div');
+    modal.id = 'authModal';
+    modal.style.cssText = `position:fixed;inset:0;background:rgba(26,22,18,0.6);z-index:3000;display:flex;align-items:center;justify-content:center;padding:20px`;
+    modal.innerHTML = `
+      <div style="background:var(--white);width:100%;max-width:420px;padding:48px 40px;position:relative;animation:fadeUp .3s forwards">
+        <button onclick="removeModal()" style="position:absolute;top:16px;right:20px;background:none;border:none;font-size:1.3rem;cursor:pointer;color:var(--text)">✕</button>
+        <h2 style="font-family:'Cormorant Garamond',serif;font-size:2rem;font-weight:300;margin-bottom:8px">${mode==='login'?'Welcome Back':'Create Account'}</h2>
+        <p style="font-size:.8rem;color:var(--warm);margin-bottom:2rem;letter-spacing:1px">${mode==='login'?'Sign in to your account':'Join Lumière today'}</p>
+        ${mode==='register'?`<input id="authName" placeholder="Full Name" style="${inputStyle()}"/>`:''}
+        <input id="authEmail" type="email" placeholder="Email Address" style="${inputStyle()}"/>
+        <input id="authPass"  type="password" placeholder="Password" style="${inputStyle()}"/>
+        <button onclick="submitAuth('${mode}')" style="width:100%;padding:14px;background:var(--dark);color:var(--cream);border:none;font-size:.78rem;letter-spacing:2.5px;text-transform:uppercase;cursor:pointer;margin-top:8px;transition:background .3s" onmouseover="this.style.background='var(--accent)';this.style.color='var(--dark)'" onmouseout="this.style.background='var(--dark)';this.style.color='var(--cream)'">${mode==='login'?'Sign In':'Register'}</button>
+        <p style="text-align:center;margin-top:1.5rem;font-size:.8rem;color:var(--warm)">
+          ${mode==='login'?'New here?':'Already have an account?'}
+          <span onclick="showAuthModal('${mode==='login'?'register':'login'}')" style="color:var(--accent);cursor:pointer;font-weight:500"> ${mode==='login'?'Create account':'Sign in'}</span>
+        </p>
+        ${mode==='login'?`<p style="text-align:center;margin-top:.5rem;font-size:.72rem;color:#aaa">Demo admin: admin@lumiere.com / admin123</p>`:''}
+        <div id="authErr" style="color:var(--red);font-size:.8rem;margin-top:1rem;text-align:center"></div>
+      </div>`;
+    document.body.appendChild(modal);
+  }
+
+  function inputStyle() {
+    return `display:block;width:100%;padding:12px 0;border:none;border-bottom:1px solid var(--soft);background:none;font-family:'DM Sans',sans-serif;font-size:.88rem;color:var(--dark);margin-bottom:1rem;outline:none`;
+  }
+
+  async function submitAuth(mode) {
+    const email = document.getElementById('authEmail').value.trim();
+    const pass  = document.getElementById('authPass').value;
+    const errEl = document.getElementById('authErr');
+    if (!email || !pass) { errEl.textContent = 'Please fill all fields'; return; }
+
+    let res;
+    if (mode === 'login') {
+      res = await apiFetch('/api/auth/login', { method:'POST', body: JSON.stringify({ email, password: pass }) });
+    } else {
+      const name = document.getElementById('authName').value.trim();
+      if (!name) { errEl.textContent = 'Name is required'; return; }
+      res = await apiFetch('/api/auth/register', { method:'POST', body: JSON.stringify({ name, email, password: pass }) });
+    }
+
+    if (!res.success) { errEl.textContent = res.error || 'Something went wrong'; return; }
+    localStorage.setItem('lumiere_token', res.token);
+    localStorage.setItem('lumiere_user', JSON.stringify(res.user));
+    currentUser = res.user;
+    updateAuthUI();
+    removeModal();
+    showToast(`Welcome, ${res.user.name.split(' ')[0]}! ✦`);
+    if (res.user.role === 'admin') setTimeout(showAdminPanel, 500);
+  }
+
+  function showAccountModal() {
+    removeModal();
+    const modal = document.createElement('div');
+    modal.id = 'authModal';
+    modal.style.cssText = `position:fixed;inset:0;background:rgba(26,22,18,0.6);z-index:3000;display:flex;align-items:center;justify-content:center;padding:20px`;
+    modal.innerHTML = `
+      <div style="background:var(--white);width:100%;max-width:480px;padding:48px 40px;position:relative;animation:fadeUp .3s forwards">
+        <button onclick="removeModal()" style="position:absolute;top:16px;right:20px;background:none;border:none;font-size:1.3rem;cursor:pointer">✕</button>
+        <h2 style="font-family:'Cormorant Garamond',serif;font-size:2rem;font-weight:300;margin-bottom:.5rem">My Account</h2>
+        <p style="color:var(--warm);font-size:.85rem;margin-bottom:2rem">${currentUser.email}</p>
+        <div style="display:grid;gap:12px;margin-bottom:2rem">
+          <button onclick="loadOrders()" style="${acctBtnStyle()}">📦 My Orders</button>
+          ${currentUser.role==='admin'?`<button onclick="removeModal();showAdminPanel()" style="${acctBtnStyle()}">⚙️ Admin Dashboard</button>`:''}
+        </div>
+        <div id="ordersSection"></div>
+        <button onclick="logout()" style="width:100%;padding:13px;background:transparent;border:1px solid var(--soft);font-size:.78rem;letter-spacing:2px;text-transform:uppercase;cursor:pointer;color:var(--text);transition:all .3s" onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor='var(--soft)'">Sign Out</button>
+      </div>`;
+    document.body.appendChild(modal);
+  }
+
+  function acctBtnStyle() {
+    return `width:100%;padding:13px 16px;background:var(--soft);border:none;text-align:left;font-family:'DM Sans',sans-serif;font-size:.85rem;cursor:pointer;transition:background .2s;border-radius:0`;
+  }
+
+  async function loadOrders() {
+    const sec = document.getElementById('ordersSection');
+    sec.innerHTML = `<p style="color:var(--warm);font-size:.85rem;text-align:center;padding:16px">Loading orders…</p>`;
+    const res = await apiFetch('/api/orders');
+    if (!res.success) { sec.innerHTML = `<p style="color:var(--red);font-size:.85rem">${res.error}</p>`; return; }
+    if (!res.orders.length) { sec.innerHTML = `<p style="color:var(--warm);font-size:.85rem;text-align:center;padding:16px">No orders yet.</p>`; return; }
+    sec.innerHTML = `
+      <h3 style="font-family:'Cormorant Garamond',serif;font-size:1.2rem;font-weight:400;margin-bottom:1rem">Recent Orders</h3>
+      ${res.orders.slice().reverse().map(o => `
+        <div style="border:1px solid var(--soft);padding:16px;margin-bottom:12px">
+          <div style="display:flex;justify-content:space-between;margin-bottom:8px">
+            <span style="font-size:.75rem;letter-spacing:1px;text-transform:uppercase;color:var(--warm)">${o.id}</span>
+            <span style="font-size:.75rem;background:${o.status==='confirmed'?'#e8f5e9':'var(--soft)'};color:${o.status==='confirmed'?'#2e7d32':'var(--warm)'};padding:2px 8px">${o.status}</span>
+          </div>
+          <div style="font-size:.82rem;color:var(--text)">${o.items.map(i=>`${i.emoji} ${i.name} ×${i.qty}`).join(' · ')}</div>
+          <div style="font-weight:500;margin-top:6px">₹${o.total.toLocaleString('en-IN')} · <span style="color:var(--warm);font-size:.78rem">${new Date(o.createdAt).toLocaleDateString('en-IN')}</span></div>
+        </div>`).join('')}`;
+  }
+
+  function logout() {
+    apiFetch('/api/auth/logout', { method:'POST' });
+    localStorage.removeItem('lumiere_token');
+    localStorage.removeItem('lumiere_user');
+    currentUser = null;
+    removeModal();
+    updateAuthUI();
+    showToast('Signed out successfully');
+  }
+
+  function removeModal() {
+    const m = document.getElementById('authModal');
+    if (m) m.remove();
+  }
+
+  /* ── ADMIN PANEL ─────────────────────────────────────────────── */
+  async function showAdminPanel() {
+    removeModal();
+    const res = await apiFetch('/api/admin/stats');
+    if (!res.success) { showToast('Could not load admin stats'); return; }
+    const s = res;
+    const modal = document.createElement('div');
+    modal.id = 'authModal';
+    modal.style.cssText = `position:fixed;inset:0;background:rgba(26,22,18,.75);z-index:3000;display:flex;align-items:center;justify-content:center;padding:20px;overflow-y:auto`;
+    modal.innerHTML = `
+      <div style="background:var(--dark);color:var(--cream);width:100%;max-width:700px;padding:48px 40px;position:relative;animation:fadeUp .3s forwards">
+        <button onclick="removeModal()" style="position:absolute;top:16px;right:20px;background:none;border:none;font-size:1.3rem;cursor:pointer;color:var(--cream)">✕</button>
+        <p style="font-size:.72rem;letter-spacing:3px;text-transform:uppercase;color:var(--accent);margin-bottom:.5rem">Admin</p>
+        <h2 style="font-family:'Cormorant Garamond',serif;font-size:2rem;font-weight:300;margin-bottom:2rem">Dashboard</h2>
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:1rem;margin-bottom:2.5rem">
+          ${[
+            ['💰','Revenue','₹'+s.totalRevenue.toLocaleString('en-IN')],
+            ['📦','Orders',s.totalOrders],
+            ['👥','Users',s.totalUsers],
+            ['📧','Subscribers',s.totalSubscribers]
+          ].map(([icon,label,val])=>`
+            <div style="background:rgba(245,240,232,.07);padding:20px 16px;text-align:center">
+              <div style="font-size:1.5rem;margin-bottom:6px">${icon}</div>
+              <div style="font-size:1.4rem;font-family:'Cormorant Garamond',serif;color:var(--accent)">${val}</div>
+              <div style="font-size:.7rem;letter-spacing:1.5px;text-transform:uppercase;color:rgba(245,240,232,.5);margin-top:4px">${label}</div>
+            </div>`).join('')}
+        </div>
+        <h3 style="font-family:'Cormorant Garamond',serif;font-size:1.2rem;font-weight:400;margin-bottom:1rem;color:var(--accent)">Recent Orders</h3>
+        ${s.recentOrders.length ? s.recentOrders.map(o=>`
+          <div style="border-bottom:1px solid rgba(245,240,232,.1);padding:12px 0;display:flex;justify-content:space-between;align-items:center">
+            <div>
+              <div style="font-size:.82rem">${o.userName} — ${o.items.map(i=>i.emoji).join('')}</div>
+              <div style="font-size:.72rem;color:rgba(245,240,232,.45);margin-top:3px">${new Date(o.createdAt).toLocaleString('en-IN')}</div>
+            </div>
+            <div style="font-weight:500;color:var(--accent)">₹${o.total.toLocaleString('en-IN')}</div>
+          </div>`).join('') : '<p style="color:rgba(245,240,232,.4);font-size:.85rem">No orders yet.</p>'}
+        <div style="margin-top:2rem;display:flex;gap:1rem">
+          <button onclick="removeModal()" style="flex:1;padding:13px;background:var(--accent);color:var(--dark);border:none;font-size:.78rem;letter-spacing:2px;text-transform:uppercase;cursor:pointer">Close</button>
+        </div>
+      </div>`;
+    document.body.appendChild(modal);
+  }
+
+  /* ── PRODUCTS API ────────────────────────────────────────────── */
+  async function fetchProducts(params = {}) {
+    const qs = new URLSearchParams(Object.fromEntries(Object.entries(params).filter(([,v])=>v)));
+    const res = await apiFetch('/api/products?' + qs);
+    if (res.success) {
+      allProducts = res.products;
+      renderProducts(res.products);
+    } else {
+      // Fallback
+      allProducts = FALLBACK_PRODUCTS;
+      renderProducts(filterFallback(params));
+    }
+  }
+
+  function filterFallback({ category, search } = {}) {
+    let list = FALLBACK_PRODUCTS;
+    if (category) list = list.filter(p => p.category === category);
+    if (search)   list = list.filter(p => p.name.toLowerCase().includes(search.toLowerCase()));
+    return list;
+  }
+
+  /* ── RENDER PRODUCTS ─────────────────────────────────────────── */
   function renderProducts(list) {
     const grid = document.getElementById('productGrid');
     if (!list.length) {
@@ -1221,10 +1438,11 @@
       <div class="product-card fade-in" id="pc-${p.id}">
         <div class="product-img-wrap">
           <div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:5rem;background:linear-gradient(135deg,var(--soft),#ddd0c0)">${p.emoji}</div>
-          ${p.badge ? `<span class="product-badge badge-${p.badge}">${p.badge === 'new' ? 'New' : 'Sale'}</span>` : ''}
+          ${p.badge ? `<span class="product-badge badge-${p.badge}">${p.badge==='new'?'New':'Sale'}</span>` : ''}
+          ${p.stock !== undefined && p.stock <= 5 && p.stock > 0 ? `<span class="product-badge" style="top:auto;bottom:12px;background:rgba(192,57,43,.9);color:#fff">Only ${p.stock} left</span>` : ''}
           <div class="product-actions">
-            <button class="btn-cart" onclick="addToCart(${p.id})">Add to Cart</button>
-            <button class="btn-wish" onclick="toggleWishlist(${p.id}, this)" title="Wishlist">${wishlist.has(p.id) ? '❤️' : '🤍'}</button>
+            <button class="btn-cart" onclick="addToCart('${p.id}')">Add to Cart</button>
+            <button class="btn-wish" onclick="toggleWishlistBtn('${p.id}',this)" title="Wishlist">${wishlist.has(p.id)?'❤️':'🤍'}</button>
           </div>
         </div>
         <div class="product-info">
@@ -1236,31 +1454,31 @@
             <span class="stars">${'★'.repeat(p.rating)}${'☆'.repeat(5-p.rating)}</span>
           </div>
         </div>
-      </div>
-    `).join('');
+      </div>`).join('');
     observeFadeIns();
   }
 
-  /* ── CART ── */
+  /* ── CART ───────────────────────────────────────────────────── */
   function addToCart(id) {
-    const product = products.find(p => p.id === id);
-    const existing = cart.find(i => i.id === id);
+    const product = allProducts.find(p => p.id == id) || FALLBACK_PRODUCTS.find(p => p.id == id);
+    if (!product) return;
+    const existing = cart.find(i => i.id == id);
     if (existing) existing.qty++;
-    else cart.push({ ...product, qty: 1 });
+    else cart.push({ ...product, qty:1 });
     saveCart();
     updateCartUI();
-    showToast(`${product.name} added to cart`);
+    showToast(`${product.name} added to cart ✦`);
   }
 
   function removeFromCart(id) {
-    cart = cart.filter(i => i.id !== id);
+    cart = cart.filter(i => i.id != id);
     saveCart();
     updateCartUI();
     renderCartItems();
   }
 
   function changeQty(id, delta) {
-    const item = cart.find(i => i.id === id);
+    const item = cart.find(i => i.id == id);
     if (!item) return;
     item.qty += delta;
     if (item.qty <= 0) { removeFromCart(id); return; }
@@ -1270,13 +1488,13 @@
   }
 
   function updateCartUI() {
-    const count = cart.reduce((s, i) => s + i.qty, 0);
+    const count = cart.reduce((s,i) => s + i.qty, 0);
     document.getElementById('cartCount').textContent = count;
   }
 
   function renderCartItems() {
     const container = document.getElementById('cartItems');
-    const footer = document.getElementById('cartFooter');
+    const footer    = document.getElementById('cartFooter');
     if (!cart.length) {
       container.innerHTML = `<div class="cart-empty"><div class="empty-icon">🛍️</div><p>Your cart is empty.<br>Discover something beautiful.</p></div>`;
       footer.style.display = 'none';
@@ -1290,21 +1508,20 @@
           <div class="cart-item-name">${i.name}</div>
           <div class="cart-item-price">₹${i.price.toLocaleString('en-IN')}</div>
           <div class="cart-item-qty">
-            <button class="qty-btn" onclick="changeQty(${i.id},-1)">−</button>
+            <button class="qty-btn" onclick="changeQty('${i.id}',-1)">−</button>
             <span class="qty-num">${i.qty}</span>
-            <button class="qty-btn" onclick="changeQty(${i.id},1)">+</button>
+            <button class="qty-btn" onclick="changeQty('${i.id}',1)">+</button>
           </div>
         </div>
-        <button class="cart-item-remove" onclick="removeFromCart(${i.id})">✕</button>
-      </div>
-    `).join('');
+        <button class="cart-item-remove" onclick="removeFromCart('${i.id}')">✕</button>
+      </div>`).join('');
     const total = cart.reduce((s,i) => s + i.price*i.qty, 0);
     document.getElementById('cartTotal').textContent = '₹' + total.toLocaleString('en-IN');
   }
 
   function toggleCart() {
-    const sidebar = document.getElementById('cartSidebar');
-    const overlay = document.getElementById('cartOverlay');
+    const sidebar  = document.getElementById('cartSidebar');
+    const overlay  = document.getElementById('cartOverlay');
     const isActive = sidebar.classList.contains('active');
     if (!isActive) renderCartItems();
     sidebar.classList.toggle('active');
@@ -1312,49 +1529,78 @@
     document.body.style.overflow = isActive ? '' : 'hidden';
   }
 
-  function checkout() {
-    showToast('Redirecting to checkout… ✦');
-    setTimeout(() => toggleCart(), 600);
+  /* ── CHECKOUT ───────────────────────────────────────────────── */
+  async function checkout() {
+    if (!cart.length) return;
+    if (!currentUser) {
+      toggleCart();
+      showToast('Please login to place an order');
+      setTimeout(() => showAuthModal('login'), 500);
+      return;
+    }
+    const res = await apiFetch('/api/orders', {
+      method: 'POST',
+      body: JSON.stringify({
+        items: cart.map(i => ({ id: i.id, qty: i.qty })),
+        address: 'Default address',
+        paymentMethod: 'cod'
+      })
+    });
+    if (res.success) {
+      cart = [];
+      saveCart();
+      updateCartUI();
+      renderCartItems();
+      toggleCart();
+      showToast(`Order #${res.order.id} placed! ✦`);
+    } else {
+      showToast(res.error || 'Order failed');
+    }
   }
 
-  /* ── WISHLIST ── */
-  function toggleWishlist(id, btn) {
-    if (wishlist.has(id)) { wishlist.delete(id); btn.textContent = '🤍'; showToast('Removed from wishlist'); }
-    else { wishlist.add(id); btn.textContent = '❤️'; showToast('Added to wishlist ❤️'); }
+  /* ── WISHLIST ───────────────────────────────────────────────── */
+  function toggleWishlistBtn(id, btn) {
+    if (wishlist.has(id)) { wishlist.delete(id); btn.textContent='🤍'; showToast('Removed from wishlist'); }
+    else { wishlist.add(id); btn.textContent='❤️'; showToast('Added to wishlist ❤️'); }
     saveWish();
   }
 
-  /* ── SEARCH ── */
-  let searchOpen = false;
+  /* ── SEARCH ─────────────────────────────────────────────────── */
   function toggleSearch() {
     searchOpen = !searchOpen;
     const bar = document.getElementById('searchBar');
     bar.classList.toggle('active', searchOpen);
     if (searchOpen) { setTimeout(() => document.getElementById('searchInput').focus(), 100); }
-    else { document.getElementById('searchInput').value = ''; renderProducts(filterList()); }
+    else { document.getElementById('searchInput').value = ''; fetchProducts(currentFilter !== 'all' ? { category: currentFilter } : {}); }
   }
 
+  let searchDebounce;
   function filterProducts() {
-    const q = document.getElementById('searchInput').value.toLowerCase();
-    const filtered = products.filter(p =>
-      p.name.toLowerCase().includes(q) || p.sub.toLowerCase().includes(q)
-    );
-    renderProducts(filtered);
+    clearTimeout(searchDebounce);
+    searchDebounce = setTimeout(() => {
+      const q = document.getElementById('searchInput').value.trim();
+      if (q.length >= 2) fetchProducts({ search: q });
+      else fetchProducts(currentFilter !== 'all' ? { category: currentFilter } : {});
+    }, 300);
   }
 
   function filterByCategory(cat) {
     currentFilter = cat;
     document.getElementById('filterLabel').textContent = cat + ' →';
-    document.getElementById('products').scrollIntoView({ behavior: 'smooth', block: 'start' });
-    renderProducts(filterList());
+    document.getElementById('products').scrollIntoView({ behavior:'smooth', block:'start' });
+    fetchProducts({ category: cat });
   }
 
-  function filterList() {
-    if (currentFilter === 'all') return products;
-    return products.filter(p => p.category === currentFilter);
+  /* ── NEWSLETTER ─────────────────────────────────────────────── */
+  async function subscribeNewsletter() {
+    const email = document.getElementById('emailInput').value.trim();
+    if (!email || !email.includes('@')) { showToast('Please enter a valid email'); return; }
+    const res = await apiFetch('/api/newsletter/subscribe', { method:'POST', body: JSON.stringify({ email }) });
+    showToast(res.message || 'Subscribed! ✦');
+    document.getElementById('emailInput').value = '';
   }
 
-  /* ── TOAST ── */
+  /* ── TOAST ──────────────────────────────────────────────────── */
   let toastTimer;
   function showToast(msg) {
     const toast = document.getElementById('toast');
@@ -1364,40 +1610,44 @@
     toastTimer = setTimeout(() => toast.classList.remove('show'), 2800);
   }
 
-  /* ── NAVBAR SCROLL ── */
+  /* ── NAVBAR SCROLL ──────────────────────────────────────────── */
   window.addEventListener('scroll', () => {
     document.getElementById('navbar').classList.toggle('scrolled', window.scrollY > 40);
   });
 
-  /* ── NEWSLETTER ── */
-  function subscribeNewsletter() {
-    const email = document.getElementById('emailInput').value;
-    if (!email || !email.includes('@')) { showToast('Please enter a valid email'); return; }
-    showToast('Thank you for subscribing! ✦');
-    document.getElementById('emailInput').value = '';
-  }
-
-  /* ── MOBILE MENU (simple toggle) ── */
+  /* ── MOBILE MENU ────────────────────────────────────────────── */
   function toggleMenu() {
-    const links = document.querySelector('.nav-links');
+    const links  = document.querySelector('.nav-links');
     const isShown = links.style.display === 'flex';
     links.style.cssText = isShown ? '' : `display:flex;flex-direction:column;position:fixed;top:70px;left:0;right:0;background:var(--white);padding:24px 8%;gap:1.5rem;z-index:999;box-shadow:0 8px 24px rgba(0,0,0,0.1)`;
   }
 
-  /* ── INTERSECTION OBSERVER ── */
+  /* ── INTERSECTION OBSERVER ──────────────────────────────────── */
   function observeFadeIns() {
     document.querySelectorAll('.fade-in:not(.visible)').forEach(el => {
       if (observer) observer.observe(el);
     });
   }
-
   const observer = new IntersectionObserver(entries => {
     entries.forEach(e => { if (e.isIntersecting) { e.target.classList.add('visible'); observer.unobserve(e.target); } });
   }, { threshold: 0.1 });
 
-  /* ── INIT ── */
-  renderProducts(products);
+  /* ── INJECT AUTH BUTTON INTO NAVBAR ────────────────────────── */
+  (function injectAuthBtn() {
+    const icons = document.querySelector('.nav-icons');
+    if (!icons) return;
+    const btn = document.createElement('button');
+    btn.id = 'authBtn';
+    btn.textContent = '👤';
+    btn.title = 'Login / Register';
+    btn.onclick = showAuthModal;
+    icons.insertBefore(btn, icons.firstChild);
+  })();
+
+  /* ── INIT ───────────────────────────────────────────────────── */
+  fetchProducts();
   updateCartUI();
+  updateAuthUI();
   observeFadeIns();
 </script>
 </body>

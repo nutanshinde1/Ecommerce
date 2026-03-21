@@ -1,0 +1,130 @@
+{
+  "users": [
+    {
+      "id": "u1",
+      "name": "Admin User",
+      "email": "admin@lumiere.com",
+      "passwordHash": "240be518fabd2724ddb6f04eeb1da5967448d7e831c08c8fa822809f74c720a9",
+      "role": "admin",
+      "createdAt": "2026-03-21T16:08:42.192Z"
+    }
+  ],
+  "products": [
+    {
+      "id": "p1",
+      "name": "Silk Wrap Dress",
+      "category": "Women",
+      "sub": "Women · Dresses",
+      "price": 4999,
+      "oldPrice": 7999,
+      "rating": 5,
+      "reviews": 24,
+      "badge": "sale",
+      "emoji": "👗",
+      "stock": 15,
+      "description": "Luxuriously soft silk wrap dress with a flattering silhouette. Perfect for evenings out."
+    },
+    {
+      "id": "p2",
+      "name": "Cashmere Blazer",
+      "category": "Men",
+      "sub": "Men · Formals",
+      "price": 8499,
+      "oldPrice": null,
+      "rating": 5,
+      "reviews": 18,
+      "badge": "new",
+      "emoji": "🧥",
+      "stock": 8,
+      "description": "Premium cashmere blazer with a structured fit. Timeless and versatile."
+    },
+    {
+      "id": "p3",
+      "name": "Leather Tote",
+      "category": "Accessories",
+      "sub": "Accessories · Bags",
+      "price": 5999,
+      "oldPrice": null,
+      "rating": 4,
+      "reviews": 31,
+      "badge": null,
+      "emoji": "👜",
+      "stock": 20,
+      "description": "Hand-stitched full-grain leather tote. Roomy, durable and beautifully crafted."
+    },
+    {
+      "id": "p4",
+      "name": "Block Heel Mule",
+      "category": "Footwear",
+      "sub": "Women · Footwear",
+      "price": 3299,
+      "oldPrice": 4999,
+      "rating": 5,
+      "reviews": 12,
+      "badge": "sale",
+      "emoji": "👠",
+      "stock": 10,
+      "description": "Elegant block heel mule in supple leather. Comfortable enough for all-day wear."
+    },
+    {
+      "id": "p5",
+      "name": "Gold Choker Set",
+      "category": "Jewellery",
+      "sub": "Jewellery · Necklace",
+      "price": 2799,
+      "oldPrice": null,
+      "rating": 5,
+      "reviews": 9,
+      "badge": "new",
+      "emoji": "📿",
+      "stock": 25,
+      "description": "Delicate 22k gold-plated choker set with matching earrings."
+    },
+    {
+      "id": "p6",
+      "name": "Linen Shirt",
+      "category": "Men",
+      "sub": "Men · Casuals",
+      "price": 1899,
+      "oldPrice": 2499,
+      "rating": 4,
+      "reviews": 44,
+      "badge": "sale",
+      "emoji": "👔",
+      "stock": 30,
+      "description": "Breathable linen shirt in a relaxed fit. Ideal for warm days."
+    },
+    {
+      "id": "p7",
+      "name": "Scented Candle Set",
+      "category": "Home",
+      "sub": "Home · Decor",
+      "price": 1499,
+      "oldPrice": null,
+      "rating": 5,
+      "reviews": 37,
+      "badge": "new",
+      "emoji": "🕯",
+      "stock": 50,
+      "description": "Set of 3 hand-poured soy candles in amber, sandalwood and jasmine."
+    },
+    {
+      "id": "p8",
+      "name": "Structured Handbag",
+      "category": "Accessories",
+      "sub": "Women · Bags",
+      "price": 6999,
+      "oldPrice": null,
+      "rating": 5,
+      "reviews": 16,
+      "badge": null,
+      "emoji": "👝",
+      "stock": 12,
+      "description": "Architectural structured handbag with gold-tone hardware and suede lining."
+    }
+  ],
+  "orders": [],
+  "reviews": [],
+  "subscribers": [],
+  "sessions": {}
+}

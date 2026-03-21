@@ -1,0 +1,16 @@
+{
+  "name": "lumiere-backend",
+  "version": "1.0.0",
+  "description": "LUMIÈRE E-Commerce Backend — Pure Node.js, zero dependencies",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC"
+}
