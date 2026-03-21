@@ -78,6 +78,10 @@ node --watch server.js
 ```
 
 ---
+## 🎥 Demo Video
+
+▶️ **Watch Demo:**  
+https://github.com/nutanshinde1/Ecommerce/blob/main/Demo.mp4
 
 ## Frontend Features
 
