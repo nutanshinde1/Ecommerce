@@ -80,7 +80,8 @@ node --watch server.js
 ---
 ## 🎥 Demo Video
 
-▶️ **Watch Demo:**  
+▶️ Click below to watch:
+
 https://github.com/nutanshinde1/Ecommerce/blob/main/Demo.mp4
 
 ## Frontend Features
