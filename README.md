@@ -1,4 +1,4 @@
-# LUMIERE — Full-Stack E-Commerce Wbsite
+# LUMIERE — Full-Stack E-Commerce Website
 
 > A luxury fashion store built with pure HTML/CSS/JS frontend and a zero-dependency Node.js backend.
 
