@@ -401,5 +401,3 @@ require('crypto').createHash('sha256').update('your_new_password').digest('hex')
 This project is for personal and educational use.
 
 ---
-
-*Built with ✦ by LUMIÈRE*
