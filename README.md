@@ -2,7 +2,7 @@
 
 > A luxury fashion store built with pure HTML/CSS/JS frontend and a zero-dependency Node.js backend.
 
----
+--- 
 
 ## Table of Contents
 
